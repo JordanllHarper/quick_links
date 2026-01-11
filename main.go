@@ -12,6 +12,45 @@ import (
 	"strings"
 )
 
+const helpMessage = `
+
+A quick way to open your favourite locations from the CLI.
+
+1. Adding items
+
+To add a location, use the add subcommand.
+
+ql add -name <YOUR_NAME> -location <YOUR_LOCATION>
+Example: ql add -name yt -location https://www.youtube.com
+
+2. Using your item
+
+To use the registered item, use it in the place of a subcommand.
+
+ql <YOUR_NAME>
+
+Example:
+ql add -name yt -location https://www.youtube.com
+ql yt
+
+3. Removing items
+
+To remove an item you've registered, use the remove subcommand.
+
+ql remove <YOUR_NAME>
+
+Example:
+ql add -name yt -location https://www.youtube.com
+ql remove yt
+
+4. Listing items
+
+To list out your quick links, use the list subcommand.
+
+ql list
+
+`
+
 type nameToURL map[string]string
 
 const quickListDir = ".ql"
@@ -29,21 +68,29 @@ func main() {
 		log.Fatalln("Something went wrong while reading from the quick list file:", err)
 	}
 
+	showHelpMessage := flag.Bool("help", false, "Shows the help message")
+
 	addCmd := flag.NewFlagSet("add", flag.ExitOnError)
 	addName := addCmd.String("name", "", "Name of the quick list item.")
-	addURL := addCmd.String("url", "", "URL which should open. Note: make sure to include https at the start!")
+	addLocation := addCmd.String("location", "", "Location which should open. Note: make sure to include https if adding a web item!")
 
 	flag.Parse()
 	args := flag.Args()
 
+	if *showHelpMessage {
+		fmt.Print(helpMessage)
+		return
+	}
+
 	if len(args) < 1 {
+		fmt.Print(helpMessage)
 		userError("Missing subcommand")
 	}
 
 	switch args[0] {
 	case "list":
-		fmt.Println("Name: <URL>")
-		fmt.Println("---")
+		fmt.Println("Name : Location")
+		fmt.Println()
 		for k, v := range ntu {
 			fmt.Println(k, ":", v)
 		}
@@ -53,10 +100,10 @@ func main() {
 		if strings.TrimSpace(*addName) == "" {
 			userError(fmt.Sprintln("Invalid or empty name", *addName))
 		}
-		if strings.TrimSpace(*addURL) == "" {
-			userError(fmt.Sprintln("Invalid or empty url", *addURL))
+		if strings.TrimSpace(*addLocation) == "" {
+			userError(fmt.Sprintln("Invalid or empty location", *addLocation))
 		}
-		ntu[*addName] = *addURL
+		ntu[*addName] = *addLocation
 	case "remove":
 		name := args[1]
 		_, ok := ntu[name]
@@ -83,9 +130,15 @@ func main() {
 			cmd = "xdg-open"
 		}
 		args = append(args, url)
-		if err := exec.Command(cmd, args...).Start(); err != nil {
-			log.Fatalln("Error whilst trying to launch browser with url:", err)
+		cmdHandle := exec.Command(cmd, args...)
+		if err := cmdHandle.Start(); err != nil {
+			log.Fatalln("Error whilst trying to launch browser with location:", err)
 		}
+
+		if err := cmdHandle.Wait(); err != nil {
+			log.Fatalln("Error whilst waiting for launch browser command to finish:", err)
+		}
+
 		return
 	}
 
