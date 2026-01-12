@@ -62,7 +62,6 @@ func userError(message string) {
 }
 
 func main() {
-
 	ntu, err := readFromFile()
 	if err != nil {
 		log.Fatalln("Something went wrong while reading from the quick list file:", err)
@@ -190,6 +189,12 @@ func readFromFile() (nameToURL, error) {
 
 	file := fmt.Sprintf("%s/%s", dir, quickListFile)
 	f, err := os.Open(file)
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		if err = writeToFile(nameToURL{"yt": "https://www.youtube.com"}); err != nil {
+			return nil, errors.Join(errors.New("readFromFile err"), err)
+		}
+		f, err = os.Open(file)
+	}
 	if err != nil {
 		return nil, errors.Join(errors.New("readFromFile err"), err)
 	}
